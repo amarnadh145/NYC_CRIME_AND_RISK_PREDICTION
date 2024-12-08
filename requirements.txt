@@ -1,0 +1,11 @@
+streamlit
+pandas
+joblib
+numpy
+requests
+streamlit-option-menu
+pygwalker
+folium
+streamlit-folium
+geopy
+scikit-learn
