@@ -145,13 +145,21 @@ def cleanup_memory():
         del st.session_state.df
     gc.collect()
 
-# Function to get location name from lat/lng
 def get_location_name(lat, lng):
     try:
-        location = geolocator.reverse((lat, lng), language="en")
-        return location.address if location else "Location not found"
-    except Exception as e:
+        api_key="AlzaSyr_szPrSBTRKxJQjL__Fy9uJRz9h4vL6mq"
+        url = f"https://maps.gomaps.pro/maps/api/geocode/json?latlng={lat},{lng}&key={api_key}"
+        response = requests.get(url)
+        response.raise_for_status() 
+        data = response.json()
+        if data['status'] == "OK" and data['results']:
+            return data['results'][0]['formatted_address']
+        else:
+            return "Address not found in response"
+    except requests.exceptions.RequestException as e:
         return f"Error fetching location name: {e}"
+    except Exception as e:
+        return f"Unexpected error: {e}"
 
 st.title("NYC CRIME & ROUTE PREDICTION")
 with st.sidebar:
@@ -294,10 +302,12 @@ elif sel == "ROUTE PREDICTION":
                           popup=f"Destination: {destination_location_name}",
                           draggable=True).add_to(st.session_state.map_destination)
             st_folium(st.session_state.map_destination, width=700, height=500, key="destination_map_updated")
-    source_location_name = get_location_name(st.session_state.source_lat, st.session_state.source_lng)
-    st.write(f"SOURCE LOCATION NAME: {source_location_name}")
-    destination_location_name = get_location_name(st.session_state.destination_lat, st.session_state.destination_lng)
-    st.write(f"DESTINATION LOCATION NAME: {destination_location_name}")
+    if st.session_state.source_lat is not None and st.session_state.source_lng is not None:
+        source_location_name = get_location_name(st.session_state.source_lat, st.session_state.source_lng)
+        st.write(f"SOURCE LOCATION NAME: {source_location_name}")
+    if st.session_state.destination_lat is not None and st.session_state.destination_lng is not None:
+        destination_location_name = get_location_name(st.session_state.destination_lat, st.session_state.destination_lng)
+        st.write(f"DESTINATION LOCATION NAME: {destination_location_name}")
     if st.session_state.source_lat and st.session_state.source_lng and st.session_state.destination_lat and st.session_state.destination_lng:
         calculate_button = st.button("CALCULATE ROUTES")
         if calculate_button:
