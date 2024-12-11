@@ -194,38 +194,72 @@ if sel == "HOME":
 elif sel == "CRIME PREDICTION":
     st.header("CRIME PREDICTION")
     st.write("PREDICTS PROBABILITY OF A CRIME AND TYPE AT A GIVEN LOCATION")
-    address = st.text_input("ENTER ADDRESS", key="address_input")
-    map_center = [40.7128, -74.0060]
-    m = folium.Map(location=map_center, zoom_start=12)
-    folium.Marker(location=map_center, popup="Default NYC Center").add_to(m)
-    location = st_folium(m, width=700, height=500)
-    if location and location.get("last_clicked"):
-        lat, lng = location["last_clicked"]["lat"], location["last_clicked"]["lng"]
-        location_name = get_location_name(lat, lng)
-        st.write(f"Location: {location_name}")
-    elif address:
-        try:
-            lat, lng = get_lat_lng(API_KEY, address)
-            st.write(f"Latitude: {lat}, Longitude: {lng}")
-        except Exception as e:
-            st.error(f"Error fetching coordinates: {e}")
-    if st.button("PREDICT"):
-        if not lat or not lng:
-            st.error("Please provide a valid location.")
-        else:
+    
+    # Initialize session state for the crime prediction coordinates
+    if "crime_lat" not in st.session_state:
+        st.session_state.crime_lat = None
+        st.session_state.crime_lng = None
+    if "map_crime" not in st.session_state:
+        st.session_state.map_crime = folium.Map(location=[40.7128, -74.0060], zoom_start=12)  # Default NYC center
+    
+    # Select Crime Location Method
+    crime_method = st.radio("SELECT LOCATION METHOD", ("TYPE ADDRESS", "SELECT ON MAP"), key="crime_method_unique")
+    if crime_method == "TYPE ADDRESS":
+        crime_address = st.text_input("ENTER LOCATION ADDRESS:")
+        if crime_address:
+            try:
+                crime_lat, crime_lng = get_lat_lng(API_KEY, crime_address)
+                st.session_state.crime_lat = crime_lat
+                st.session_state.crime_lng = crime_lng
+                crime_location_name = get_location_name(crime_lat, crime_lng)
+                st.session_state.map_crime = folium.Map(location=[crime_lat, crime_lng], zoom_start=12)
+                folium.Marker([crime_lat, crime_lng], popup=f"Location: {crime_location_name}").add_to(st.session_state.map_crime)
+                st.subheader("LOCATION MAP")
+                st_folium(st.session_state.map_crime, width=700, height=500, key="crime_map_unique")
+            except Exception as e:
+                st.error(f"Error fetching crime location coordinates: {e}")
+    elif crime_method == "SELECT ON MAP":
+        location = st_folium(st.session_state.map_crime, width=700, height=500, key="crime_map_unique")
+        if location and location.get("last_clicked"):
+            st.session_state.crime_lat = location["last_clicked"]["lat"]
+            st.session_state.crime_lng = location["last_clicked"]["lng"]
+            crime_location_name = get_location_name(st.session_state.crime_lat, st.session_state.crime_lng)
+            st.session_state.map_crime = folium.Map(location=[st.session_state.crime_lat, st.session_state.crime_lng], zoom_start=12)
+            folium.Marker([st.session_state.crime_lat, st.session_state.crime_lng],
+                          popup=f"Location: {crime_location_name}",
+                          draggable=True).add_to(st.session_state.map_crime)
+            st_folium(st.session_state.map_crime, width=700, height=500, key="crime_map_updated")
+
+    # Display selected Crime Location Name
+    if st.session_state.crime_lat is not None and st.session_state.crime_lng is not None:
+        crime_location_name = get_location_name(st.session_state.crime_lat, st.session_state.crime_lng)
+        st.write(f"LOCATION NAME: {crime_location_name}")
+
+    # Crime Prediction
+    if st.session_state.crime_lat and st.session_state.crime_lng:
+        predict_button = st.button("PREDICT CRIME RISK")
+        if predict_button:
             try:
                 chunk_dir = '.'
-                chunk_base_name = "AJU_MODEL_CRIME_RISK_PART"  
+                chunk_base_name = "AJU_MODEL_CRIME_RISK_PART"
                 combined_output_file = "AJU_MODEL_CRIME_RISK.pkl"
                 combine_chunks(chunk_dir, chunk_base_name, combined_output_file)
-                input_df = pd.DataFrame({'Latitude': [lat], 'Longitude': [lng]})
+                
+                # Prepare the input for prediction
+                input_df = pd.DataFrame({'Latitude': [st.session_state.crime_lat], 'Longitude': [st.session_state.crime_lng]})
                 expected_columns = ['Latitude', 'Longitude']
                 input_df = input_df[expected_columns]
+                
+                # Load models and make predictions
                 model_crime_risk = load_model(combined_output_file)
                 model_crime_type = load_model('AJU_MODEL_CRIME_TYPE.pkl')
                 label_encoder_crime = load_model('LABEL_ENCODER_CRIME.pkl')
+                
+                # Crime risk prediction
                 crime_risk_prediction = model_crime_risk.predict(input_df)[0]
                 st.write(f"Predicted Crime Risk Percentage: {crime_risk_prediction:.2f}%")
+                
+                # Crime type prediction probabilities
                 crime_type_probabilities = model_crime_type.predict_proba(input_df)[0]
                 predicted_crime_types = label_encoder_crime.inverse_transform(
                     crime_type_probabilities.argsort()[::-1][:3])
@@ -234,7 +268,9 @@ elif sel == "CRIME PREDICTION":
                     probability = crime_type_probabilities[crime_type_probabilities.argsort()[::-1][i]] * 100
                     st.write(f"{i + 1}. {crime_type}: {probability:.2f}%")
             except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+                st.error(f"An error occurred while predicting crime risk: {str(e)}")
+    else:
+        st.error("PLEASE SELECT A LOCATION FOR CRIME PREDICTION.")
 elif sel == "ROUTE PREDICTION":
     st.header("ROUTE PREDICTION")
     st.write("PREDICTS RISK SCORES OF THE PATHS BETWEEN A GIVEN SOURCE AND DESTINATION")
