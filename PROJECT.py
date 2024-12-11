@@ -29,7 +29,7 @@ def load_config(file_path):
 
 @st.cache_data
 def load_zone_risk_dict():
-    zone_risk_df = pd.read_csv("zone_risk.csv", header=None, names=['zone_id', 'risk'])
+    zone_risk_df = pd.read_csv("ZONE_RISK.csv", header=None, names=['zone_id', 'risk'])
     zone_risk_df = zone_risk_df.replace([np.inf, -np.inf], np.nan).dropna()
     return dict(zip(zone_risk_df['zone_id'].astype('Int64'), zone_risk_df['risk']))
 
