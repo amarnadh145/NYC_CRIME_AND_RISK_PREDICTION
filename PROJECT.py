@@ -356,8 +356,6 @@ elif sel == "ROUTE PREDICTION":
                 for route_id, route_info in route_risk_scores.items():
                     st.subheader(f"Route {route_id}")
                     st.write(f"Risk Score: {route_info.get('risk_score', 'Unknown')}")
-                    st.write(f"Total Distance: {route_info.get('distance')}")
-                    st.write(f"Total Duration: {route_info.get('time')}")
                     for step in all_routes_data[route_id]['steps']:
                         st.write(step)
             except Exception as e:
