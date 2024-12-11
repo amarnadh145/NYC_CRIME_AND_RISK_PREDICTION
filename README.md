@@ -63,3 +63,5 @@ Refer to `AJU_FinalProject_Presentation_SP24_BigData.pptx` for a detailed overvi
 ---
 
 Feel free to open an issue or submit a pull request if you encounter any problems or have suggestions for improvement!
+## To Run
+https://nyc-crime-route-prediction.streamlit.app/
